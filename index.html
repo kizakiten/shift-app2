@@ -32,7 +32,7 @@ select,input,textarea{font:inherit;border:1px solid #ccc;border-radius:9px;paddi
 button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}.primary{background:#222;color:#fff}.secondary{background:#eee}
 .notice,.small{font-size:12px;color:#666;line-height:1.6}
 #deadlineInfo{color:#c00;font-weight:700}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tab{background:#e9ebef}.tab.active{background:#222;color:#fff}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.tab{background:#e9ebef;font-size:13px;padding:6px 10px;border-radius:8px}.tab.active{background:#222;color:#fff}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .day{position:relative;min-width:0;overflow:hidden;min-height:108px;background:#fff;border:1px solid #ddd;border-radius:9px;padding:6px}.date{font-weight:800;font-size:13px}.dow{font-size:11px;color:#666}
 .sun .date,.sun .dow{color:#d33}.sat .date,.sat .dow{color:#2670c9}
@@ -125,8 +125,7 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
       </div>
       <div id="inputFields">
         <div class="card">
-          <div class="row"><b id="loggedStaffName"></b></div>
-          <div class="row" style="margin:8px 0">
+          <div class="row" style="margin:0 0 8px">
             <button class="secondary" id="ocrBtn" type="button">📷 用紙の写真から読み込む</button>
             <input type="file" id="ocrFileInput" accept="image/*" capture="environment" style="display:none">
             <span id="ocrMsg" class="small"></span>
@@ -426,7 +425,6 @@ function renderInput(){
   deadlineInfo.textContent=(dl&&!passed)?('入力締切：'+dl.replace(/-/g,'/')+'（23:59まで）'):'';
   if(passed)return;
   const d=data(),p=ensure(d,loggedUser);
-  loggedStaffName.textContent=loggedUser;
   renderInputCalendar();
   timeList.innerHTML=dates().map(x=>{
     const k=iso(x),t=p.time[k]||{},hn=holidayName(x);
