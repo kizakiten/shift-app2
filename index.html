@@ -105,7 +105,7 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
   <div class="container" style="padding:0">
     <h1>📅敦賀木崎店 休み希望アプリ </h1>
     <div class="row">
-      <label>対象期間</label><select id="period"></select><b id="periodLabel"></b>
+      <label>対象期間</label><select id="period"></select>
       <span id="currentUser" class="small"></span>
     </div>
   </div>
@@ -124,13 +124,15 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
         <p class="notice">この期間の休み希望・勤務可能時間の入力は締め切られました。変更が必要な場合は管理者にご連絡ください。</p>
       </div>
       <div id="inputFields">
-        <div class="card">
-          <div class="row" style="margin:0 0 8px">
-            <button class="secondary" id="ocrBtn" type="button">📷 用紙の写真から読み込む</button>
+        <div style="margin:10px 2px 0">
+          <div class="row">
+            <button class="secondary" id="ocrBtn" type="button" style="font-size:13px;padding:6px 10px;border-radius:8px">📷 用紙の写真から読み込む</button>
             <input type="file" id="ocrFileInput" accept="image/*" capture="environment" style="display:none">
             <span id="ocrMsg" class="small"></span>
           </div>
-          <p class="notice">紙に書いた休み希望を写真で撮ると、内容を自動で入力欄に反映します。反映後は内容を確認してから保存してください。</p>
+          <p class="notice" style="margin:6px 0 0">用紙を撮影すると入力欄に自動反映します。内容を確認して保存してください。</p>
+        </div>
+        <div class="card">
           <p class="notice">休み希望の日はすべて記入してください。それ以外の日は出勤可能と判断します。一番下の「保存」を忘れず押してください。 ※入力・修正は毎月1日までにお願いします</p>
           <p class="notice" id="deadlineInfo"></p>
           <div class="legend">🔴 絶対休み　 🟡 できれば休み　 🔵 有給休暇　 </div>
@@ -536,8 +538,6 @@ function exportExcel(){
 exportBtn.onclick=exportExcel;
 
 function renderAll(){
-  const ds=dates(),a=ds[0],b=ds[ds.length-1];
-  periodLabel.textContent=`${a.getFullYear()}/${a.getMonth()+1}/${a.getDate()} ～ ${b.getFullYear()}/${b.getMonth()+1}/${b.getDate()}`;
   if(!isAdmin){renderInput();renderShare()}else renderAdmin();
 }
 period.onchange=async()=>{periodKey=period.value;await loadPeriodData(periodKey);renderAll()};
