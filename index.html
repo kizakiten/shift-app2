@@ -316,8 +316,10 @@ async function apiOcr(base64,dateList){
     headers:{'Content-Type':'text/plain'},
     body:JSON.stringify({action:'ocr',image:base64,dates:dateList})
   });
-  if(!res.ok)throw new Error('読み取りに失敗しました: '+res.status);
-  const j=await res.json();
+  if(!res.ok)throw new Error('通信エラー: '+res.status);
+  const raw=await res.text();
+  let j;
+  try{j=JSON.parse(raw);}catch(_){throw new Error('サーバーの応答が不正です（Apps Scriptのデプロイ更新・権限承認を確認してください）: '+raw.slice(0,80));}
   if(j.error)throw new Error(j.error);
   return j.result; // {statuses:{iso:'abs'|'pref'|'none'}, times:{iso:{from,to}}, note:string}
 }
@@ -582,7 +584,7 @@ ocrFileInput.onchange=async()=>{
   }catch(e){
     console.error('読み取りに失敗しました',e);
     ocrMsg.textContent='';
-    alert('読み取りに失敗しました。もう一度お試しいただくか、手入力をお願いします。');
+    alert('読み取りに失敗しました。\n原因: '+(e&&e.message?e.message:e)+'\n\nもう一度お試しいただくか、手入力をお願いします。');
   }finally{
     ocrBtn.disabled=false;
   }
@@ -614,7 +616,7 @@ function applyOcrResult(result){
   const d=data(),p=ensure(d,loggedUser);
   if(result&&result.statuses){
     Object.entries(result.statuses).forEach(([k,v])=>{
-      if(v==='abs'||v==='pref')p.status[k]=v;else delete p.status[k];
+      if(v==='abs'||v==='pref'||v==='off')p.status[k]=v;else delete p.status[k];
     });
   }
   if(result&&result.times){
