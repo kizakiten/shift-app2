@@ -1,0 +1,779 @@
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>敦賀木崎店 休み希望アプリ</title>
+<meta name="description" content="敦賀木崎店 スタッフ用 休み希望申請アプリ">
+<meta property="og:description" content="敦賀木崎店 スタッフ用 休み希望申請アプリ">
+
+<!-- ホーム画面アイコン（iOS） -->
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="休み希望">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- ファビコン -->
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icon-16.png">
+
+<!-- ホーム画面アイコン（Android / Chrome） -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#222222">
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#222;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+header{background:#fff;border-bottom:1px solid #ddd;padding:13px;position:sticky;top:0;z-index:5}
+.container{max-width:820px;margin:auto;padding:10px}
+h1{font-size:20px;margin:0 0 10px}h2{font-size:18px}.card{background:#fff;border:1px solid #ddd;border-radius:14px;padding:14px;margin:10px 0}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.row>*{max-width:100%}
+select,input,textarea{font:inherit;border:1px solid #ccc;border-radius:9px;padding:9px;background:#fff}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}.primary{background:#222;color:#fff}.secondary{background:#eee}
+.notice,.small{font-size:12px;color:#666;line-height:1.6}
+#deadlineInfo{color:#c00;font-weight:700}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tab{background:#e9ebef}.tab.active{background:#222;color:#fff}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.day{position:relative;min-width:0;overflow:hidden;min-height:108px;background:#fff;border:1px solid #ddd;border-radius:9px;padding:6px}.date{font-weight:800;font-size:13px}.dow{font-size:11px;color:#666}
+.sun .date,.sun .dow{color:#d33}.sat .date,.sat .dow{color:#2670c9}
+.holiday{background:#fff8ef}.holiday .date,.holiday .dow{color:#e67e22}
+.holiday-name{display:block;font-size:9px;color:#e67e22;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.badge{display:block;border-radius:7px;padding:4px 2px;margin-top:5px;text-align:center;font-size:10px;font-weight:700}
+.none{background:#f0f0f0;color:#777}.abs{background:#ffe0e0;color:#b00000}.pref{background:#fff0bd;color:#765700}.off{background:#e4ebff;color:#284fa8}
+.day button{position:absolute;inset:0;background:transparent}
+.legend{font-size:12px;display:flex;gap:12px;flex-wrap:wrap}
+.time-row{display:grid;grid-template-columns:82px 1fr 1fr;gap:7px;align-items:center;border-bottom:1px solid #eee;padding:6px 0}
+.time-selects{display:grid;grid-template-columns:1fr 1fr;gap:5px}.time-selects select{width:100%;padding:8px}
+.staff-card{border:1px solid #ddd;border-radius:12px;margin:8px 0;overflow:hidden}.staff-head{padding:12px;background:#f0f1f3;font-weight:800;cursor:pointer}
+.staff-body{padding:10px}.admin-row{display:grid;grid-template-columns:70px 115px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid #eee;font-size:13px;align-items:center}
+.people span{display:inline-block;background:#eef0f3;border-radius:99px;padding:3px 8px;margin:2px;font-size:12px}
+.modal{display:none;position:fixed;inset:0;background:#0007;z-index:20;align-items:flex-end}.modal.open{display:flex}.sheet{background:#fff;width:100%;max-width:820px;margin:auto;border-radius:18px 18px 0 0;padding:18px}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:8px}.opt{border:2px solid #ddd;background:#fff}.opt.selected.abs{border-color:#e53935;background:#fff0f0}.opt.selected.pref{border-color:#f0ae00;background:#fff9e5}.opt.selected.off{border-color:#356ae6;background:#eef3ff}
+.loginOverlay{position:fixed;inset:0;background:#f5f6f8;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.loginBox{background:#fff;border:1px solid #ddd;border-radius:16px;padding:22px;width:min(450px,100%);box-shadow:0 8px 30px #0001}.loginBox input,.loginBox textarea,.loginBox select{width:100%;margin:5px 0 10px}
+.loginBox button{width:100%;margin-top:7px}.error{color:#b00000;font-size:12px;min-height:18px}.success{color:#147a32;font-size:12px}
+.adminBar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px}
+.passwordGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:500px){.day{min-height:98px;padding:4px}.date{font-size:12px}.badge{font-size:9px}.admin-row{grid-template-columns:58px 92px 1fr;font-size:12px}.time-row{grid-template-columns:65px 1fr 1fr}.passwordGrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="loginOverlay" id="loginOverlay">
+  <div class="loginBox">
+    <h2>📅 敦賀木崎店 休み希望アプリ</h2>
+
+    <div id="firstSetup">
+      <h3>管理者 初期設定</h3>
+      <p class="notice">この画面は最初の1回だけ表示されます。管理者がスタッフ名と各スタッフのログインパスワードを登録します。</p>
+      <label>スタッフ名（1行に1人）</label>
+      <textarea id="setupNames" rows="8" placeholder="Aさん&#10;Bさん&#10;Cさん&#10;Dさん"></textarea>
+      <label>管理者パスワード</label>
+      <input id="setupAdminPw" type="password" placeholder="管理者用パスワード">
+      <div id="setupPasswordArea"></div>
+      <button class="primary" id="setupNext">スタッフのパスワード設定へ</button>
+      <div class="error" id="setupError"></div>
+    </div>
+
+    <div id="loginChoice" style="display:none">
+      <p class="notice">ログイン方法を選んでください。</p>
+      <button class="primary" id="staffLoginChoice">スタッフとしてログイン</button>
+      <button class="secondary" id="adminLoginChoice">管理者ログイン</button>
+    </div>
+
+    <div id="staffLoginBox" style="display:none">
+      <h3>スタッフログイン</h3>
+      <p class="notice">名前を選択してパスワードを入力してください</p>
+      <label>名前</label><select id="staffNameLogin"></select>
+      <label>パスワード</label><input id="staffPwLogin" type="password">
+      <button class="primary" id="staffLoginBtn">ログイン</button>
+      <button class="secondary" id="backChoice1">戻る</button>
+      <div class="error" id="staffLoginError"></div>
+    </div>
+
+    <div id="adminLoginBox" style="display:none">
+      <h3>管理者ログイン</h3>
+      <label>管理者パスワード</label><input id="adminPwLogin" type="password">
+      <button class="primary" id="adminLoginBtn">管理者としてログイン</button>
+      <button class="secondary" id="backChoice2">戻る</button>
+      <div class="error" id="adminLoginError"></div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="container" style="padding:0">
+    <h1>📅敦賀木崎店 休み希望アプリ </h1>
+    <div class="row">
+      <label>対象期間</label><select id="period"></select><b id="periodLabel"></b>
+      <span id="currentUser" class="small"></span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div id="staffArea">
+    <div class="tabs">
+      <button class="tab active" id="tabInput">希望を入力</button>
+      <button class="tab" id="tabShare">みんなの休み希望</button>
+    </div>
+
+    <section id="inputView">
+      <div class="card" id="deadlineNotice" style="display:none">
+        <h2>⛔ 入力を締め切りました</h2>
+        <p class="notice">この期間の休み希望・勤務可能時間の入力は締め切られました。変更が必要な場合は管理者にご連絡ください。</p>
+      </div>
+      <div id="inputFields">
+        <div class="card">
+          <div class="row"><b id="loggedStaffName"></b></div>
+          <div class="row" style="margin:8px 0">
+            <button class="secondary" id="ocrBtn" type="button">📷 用紙の写真から読み込む</button>
+            <input type="file" id="ocrFileInput" accept="image/*" capture="environment" style="display:none">
+            <span id="ocrMsg" class="small"></span>
+          </div>
+          <p class="notice">紙に書いた休み希望を写真で撮ると、内容を自動で入力欄に反映します。反映後は内容を確認してから保存してください。</p>
+          <p class="notice">休み希望の日はすべて記入してください。それ以外の日は出勤可能と判断します。一番下の「保存」を忘れず押してください。 ※入力・修正は毎月1日までにお願いします</p>
+          <p class="notice" id="deadlineInfo"></p>
+          <div class="legend">🔴 絶対休み　 🟡 できれば休み　 🔵 有給休暇　 </div>
+        </div>
+        <div class="card"><div class="days" id="inputCalendar"></div></div>
+        <div class="card">
+          <h2>勤務可能時間</h2>
+          <p class="notice">希望勤務時間を記入してください。記入がない場合は契約時の勤務時間を優先します</p>
+          <p class="notice">←出勤時間　退勤時間→</p>
+          <div id="timeList"></div>
+          <h2>備考</h2>
+          <p class="notice">自由に書き込んでください（例：月〇〇時間以内など）。</p>
+          <textarea id="noteInput" rows="4" style="width:100%" placeholder="自由に希望・事情などを記入してください"></textarea>
+          <button class="primary" id="saveBtn">保存する</button>
+          <span id="saveMsg" class="small"></span>
+        </div>
+      </div>
+    </section>
+
+
+    <section id="shareView" style="display:none">
+      <div class="card"><h2>みんなの休み希望</h2>
+        <p class="notice">ここでは休み希望だけを共有します。勤務可能時間は表示しません。</p>
+        <div class="days" id="shareCalendar"></div>
+      </div>
+      <div class="card" id="shareDetail"><p class="notice">日付をタップすると希望者を表示します。</p></div>
+    </section>
+  </div>
+
+  <section id="adminView" style="display:none">
+    <div class="adminBar">
+      <button class="secondary" id="exportBtn">📊 Excel出力</button>
+      <button class="secondary" id="deadlineBtn">締切設定</button>
+      <button class="secondary" id="staffManageBtn">スタッフ設定</button>
+      <button class="secondary" id="logoutBtn">ログアウト</button>
+    </div>
+    <div class="card">
+      <h2>管理者：スタッフごとの希望</h2>
+      <p class="notice">スタッフ1人ごとに1か月分の「休み希望」と「勤務可能時間」を確認できます。</p>
+      <div id="adminStaff"></div>
+    </div>
+    <div class="card" id="deadlinePanel" style="display:none">
+      <h2>締切設定</h2>
+      <p class="notice">対象期間ごとに入力締切日を設定できます。締切日の23:59を過ぎると、スタッフ側の入力画面に「入力を締め切りました」と表示され、入力・保存ができなくなります。空欄のままにすると締切なしです。</p>
+      <div id="deadlineList"></div>
+      <button class="primary" id="deadlineSave">保存</button>
+      <span id="deadlineMsg" class="small"></span>
+    </div>
+    <div class="card" id="staffManage" style="display:none">
+      <h2>スタッフ設定</h2>
+      <p class="notice">スタッフ名とパスワードは管理者だけが変更できます。1行につき「名前｜パスワード」で入力します。</p>
+      <textarea id="manageStaff" rows="10" style="width:100%"></textarea>
+      <button class="primary" id="manageSave">保存</button>
+      <span id="manageMsg" class="small"></span>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal"><div class="sheet">
+  <div class="row" style="justify-content:space-between"><h2 id="modalTitle"></h2><button class="secondary" id="closeModal">閉じる</button></div>
+  <p class="small" id="modalPerson"></p>
+  <div class="options">
+    <button class="opt abs" data-status="abs">🔴 絶対休み</button>
+    <button class="opt pref" data-status="pref">🟡 できれば休み</button>
+    <button class="opt off" data-status="off">🔵 有給休暇</button>
+    <button class="opt" data-status="none">未設定に戻す</button>
+  </div>
+</div></div>
+
+<script>
+const DOW=['日','月','火','水','木','金','土'];
+let periodKey='',currentDate='',loggedUser='',isAdmin=false;
+const $=id=>document.getElementById(id);
+// スマホでパスワード欄などにキーボードが出ている状態だと、ボタンの1回目のタップが
+// 「キーボードを閉じるだけ」で終わってしまい、クリックが発生しないことがある。
+// touchendでも同じ処理を確実に実行することで、1回のタップで反応するようにする。
+function bindTap(el,handler){
+  let touched=false;
+  el.addEventListener('touchend',e=>{touched=true;e.preventDefault();handler();});
+  el.addEventListener('click',()=>{if(touched){touched=false;return}handler();});
+}
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),fmt=d=>d.getMonth()+1+'/'+d.getDate();
+
+/* ▼▼▼ 日本の祝日を自動計算する処理 ▼▼▼ */
+// 移動祝日（第n月曜）の日付を求める
+function nthWeekdayOfMonth(year,month,weekday,n){
+  let count=0;
+  for(let day=1;day<=31;day++){
+    const d=new Date(year,month-1,day);
+    if(d.getMonth()!==month-1)break;
+    if(d.getDay()===weekday){count++;if(count===n)return day;}
+  }
+  return null;
+}
+// 春分の日・秋分の日（1980～2099年で有効な近似式）
+function shunbunDay(year){return Math.floor(20.8431+0.242194*(year-1980)-Math.floor((year-1980)/4));}
+function shuubunDay(year){return Math.floor(23.2488+0.242194*(year-1980)-Math.floor((year-1980)/4));}
+function baseHolidaysOfYear(year){
+  const h={};
+  const add=(m,d,name)=>{if(d)h[`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`]=name;};
+  add(1,1,'元日');
+  add(1,nthWeekdayOfMonth(year,1,1,2),'成人の日');
+  add(2,11,'建国記念の日');
+  add(2,23,'天皇誕生日');
+  add(3,shunbunDay(year),'春分の日');
+  add(4,29,'昭和の日');
+  add(5,3,'憲法記念日');
+  add(5,4,'みどりの日');
+  add(5,5,'こどもの日');
+  add(7,nthWeekdayOfMonth(year,7,1,3),'海の日');
+  add(8,11,'山の日');
+  add(9,nthWeekdayOfMonth(year,9,1,3),'敬老の日');
+  add(9,shuubunDay(year),'秋分の日');
+  add(10,nthWeekdayOfMonth(year,10,1,2),'スポーツの日');
+  add(11,3,'文化の日');
+  add(11,23,'勤労感謝の日');
+  return h;
+}
+// 振替休日・国民の休日も含めて祝日マップを作成
+function buildHolidayMap(startYear,endYear){
+  let h={};
+  for(let y=startYear;y<=endYear;y++)h={...h,...baseHolidaysOfYear(y)};
+  // 振替休日：祝日が日曜のとき、直後の「祝日でない日」を休日にする
+  let extra={};
+  Object.keys(h).sort().forEach(dstr=>{
+    const d=new Date(dstr+'T00:00:00');
+    if(d.getDay()===0){
+      let nd=new Date(d);
+      do{nd.setDate(nd.getDate()+1);}while(h[iso(nd)]||extra[iso(nd)]);
+      extra[iso(nd)]='振替休日';
+    }
+  });
+  h={...h,...extra};
+  // 国民の休日：祝日と祝日に挟まれた平日（日曜以外）を休日にする
+  const holidaySet=new Set(Object.keys(h));
+  let extra2={};
+  Object.keys(h).sort().forEach(dstr=>{
+    const d=new Date(dstr+'T00:00:00');
+    const between=new Date(d);between.setDate(between.getDate()+1);
+    const next=new Date(d);next.setDate(next.getDate()+2);
+    if(holidaySet.has(iso(next))&&!holidaySet.has(iso(between))&&between.getDay()!==0){
+      extra2[iso(between)]='国民の休日';
+    }
+  });
+  return {...h,...extra2};
+}
+// アプリで扱う期間（前後数か月）をカバーできるよう、前後の年も含めて計算しておく
+const HOLIDAY_MAP=buildHolidayMap(new Date().getFullYear()-1,new Date().getFullYear()+3);
+function holidayName(d){return HOLIDAY_MAP[iso(d)]||null;}
+/* ▲▲▲ 祝日計算ここまで ▲▲▲ */
+
+const API_URL = 'https://script.google.com/macros/s/AKfycbwB6hFzuiXYeWvN4ah8jKQrthn_-ilwb11BP0qa2mc-mubyZt0yznmBRUjUDzFMnZzH/exec';
+
+async function apiGet(key){
+  const res=await fetch(API_URL+'?action=get&key='+encodeURIComponent(key));
+  if(!res.ok)throw new Error('取得に失敗しました: '+res.status);
+  const j=await res.json();
+  if(j.error)throw new Error(j.error);
+  return j.value; // 文字列 or null
+}
+async function apiGetMany(keys){
+  const res=await fetch(API_URL+'?action=getMany&keys='+encodeURIComponent(keys.join(',')));
+  if(!res.ok)throw new Error('取得に失敗しました: '+res.status);
+  const j=await res.json();
+  if(j.error)throw new Error(j.error);
+  return j.values; // {key: value, ...} の形
+}
+async function apiSet(key,value){
+  const res=await fetch(API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain'}, // プリフライトを避けるためtext/plainで送る
+    body:JSON.stringify({action:'set',key,value})
+  });
+  if(!res.ok)throw new Error('保存に失敗しました: '+res.status);
+  const j=await res.json();
+  if(j.error)throw new Error(j.error);
+  return j;
+}
+async function apiOcr(base64,dateList){
+  const res=await fetch(API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({action:'ocr',image:base64,dates:dateList})
+  });
+  if(!res.ok)throw new Error('読み取りに失敗しました: '+res.status);
+  const j=await res.json();
+  if(j.error)throw new Error(j.error);
+  return j.result; // {statuses:{iso:'abs'|'pref'|'none'}, times:{iso:{from,to}}, note:string}
+}
+
+function names(){return cachedNames}
+function staffAccounts(){return cachedAccounts}
+function data(){return periodDataCache[periodKey]||{}}
+function save(d){
+  periodDataCache[periodKey]=d;
+  return apiSet('period:'+periodKey, JSON.stringify(d));
+}
+function ensure(d,n){d[n]??={status:{},time:{},note:''};d[n].note??='';return d[n]}
+
+let cachedNames=[],cachedAccounts={},cachedAdminPassword=null,cachedDeadlines={},periodDataCache={};
+
+async function loadConfig(){
+  try{
+    const v=await apiGetMany(['config:names','config:accounts','config:adminPassword','config:deadlines']);
+    cachedNames=v['config:names']?JSON.parse(v['config:names']):[];
+    cachedAccounts=v['config:accounts']?JSON.parse(v['config:accounts']):{};
+    cachedAdminPassword=v['config:adminPassword']||null;
+    cachedDeadlines=v['config:deadlines']?JSON.parse(v['config:deadlines']):{};
+  }catch(e){
+    console.error(e);cachedNames=[];cachedAccounts={};cachedAdminPassword=null;cachedDeadlines={};
+  }
+}
+async function saveConfig(ns,acc,ap){
+  cachedNames=ns;cachedAccounts=acc;
+  const tasks=[apiSet('config:names',JSON.stringify(ns)),apiSet('config:accounts',JSON.stringify(acc))];
+  if(ap!==undefined){cachedAdminPassword=ap;tasks.push(apiSet('config:adminPassword',ap));}
+  await Promise.all(tasks);
+}
+function saveDeadlines(dl){
+  cachedDeadlines=dl;
+  return apiSet('config:deadlines',JSON.stringify(dl));
+}
+function deadlineFor(key){return cachedDeadlines[key]||'';}
+function isDeadlinePassed(key){
+  const dl=cachedDeadlines[key];
+  if(!dl)return false;
+  return new Date()>new Date(dl+'T23:59:59');
+}
+async function loadPeriodData(key){
+  if(periodDataCache[key])return periodDataCache[key];
+  try{
+    const v=await apiGet('period:'+key);
+    periodDataCache[key]=v?JSON.parse(v):{};
+  }catch(e){console.error(e);periodDataCache[key]={};}
+  return periodDataCache[key];
+}
+async function preloadPeriods(){
+  const opts=[...period.options].map(o=>o.value);
+  try{
+    const v=await apiGetMany(opts.map(k=>'period:'+k));
+    opts.forEach(k=>{
+      const raw=v['period:'+k];
+      periodDataCache[k]=raw?JSON.parse(raw):{};
+    });
+  }catch(e){
+    console.error(e);
+    opts.forEach(k=>{ if(!periodDataCache[k]) periodDataCache[k]={}; });
+  }
+}
+
+
+function dates(){
+  const [y,m,day]=periodKey.split('-').map(Number);
+  const s=new Date(y,m-1,day),e=new Date(y,m,15),out=[];
+  for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1))out.push(new Date(d));
+  return out;
+}
+function makePeriods(){
+  const now=new Date(),base=now.getDate()>=16?new Date(now.getFullYear(),now.getMonth(),16):new Date(now.getFullYear(),now.getMonth()-1,16);
+  const arr=[0,1,2].map(i=>new Date(base.getFullYear(),base.getMonth()+i,16));
+  period.innerHTML=arr.map(s=>{
+    const e=new Date(s.getFullYear(),s.getMonth()+1,15);
+    return `<option value="${iso(s)}">${s.getFullYear()}/${s.getMonth()+1}/16 ～ ${e.getFullYear()}/${e.getMonth()+1}/15</option>`;
+  }).join('');
+  periodKey=iso(arr[1]);period.value=periodKey;
+}
+function timeSel(k,type,v){
+  let [vh,vm]=(v||'').split(':'),h='<option value="">時</option>';
+  for(let i=8;i<=21;i++){let x=String(i).padStart(2,'0');h+=`<option ${vh===x?'selected':''} value="${x}">${x}</option>`}
+  let m='<option value="">分</option>';
+  ['00','15','30','45'].forEach(x=>m+=`<option ${vm===x?'selected':''} value="${x}">${x}</option>`);
+  return `<div class="time-selects"><select data-k="${k}" data-t="${type}" data-p="h">${h}</select><select data-k="${k}" data-t="${type}" data-p="m">${m}</select></div>`;
+}
+function renderInputCalendar(){
+  const d=data(),p=ensure(d,loggedUser);
+  inputCalendar.innerHTML=dates().map(x=>{
+    const k=iso(x),s=p.status[k]||'none',l={none:'未設定',abs:'絶対休み',pref:'できれば休み',off:'有給休暇'}[s];
+    const hn=holidayName(x);
+    return `<div class="day ${x.getDay()==0?'sun':''} ${x.getDay()==6?'sat':''} ${hn?'holiday':''}">
+      <div class="date">${fmt(x)}</div><div class="dow">${DOW[x.getDay()]}</div>
+      ${hn?`<span class="holiday-name" title="${hn}">${hn}</span>`:''}
+      <span class="badge ${s}">${l}</span><button onclick="openModal('${k}')"></button>
+    </div>`;
+  }).join('');
+}
+function renderInput(){
+  const passed=isDeadlinePassed(periodKey),dl=deadlineFor(periodKey);
+  deadlineNotice.style.display=passed?'block':'none';
+  inputFields.style.display=passed?'none':'block';
+  deadlineInfo.textContent=(dl&&!passed)?('入力締切：'+dl.replace(/-/g,'/')+'（23:59まで）'):'';
+  if(passed)return;
+  const d=data(),p=ensure(d,loggedUser);
+  loggedStaffName.textContent=loggedUser;
+  renderInputCalendar();
+  timeList.innerHTML=dates().map(x=>{
+    const k=iso(x),t=p.time[k]||{},hn=holidayName(x);
+    return `<div class="time-row"><span>${fmt(x)}(${DOW[x.getDay()]})${hn?`<br><span style="color:#e67e22;font-size:10px;font-weight:700">(祝)</span>`:''}</span>${timeSel(k,'from',t.from)}${timeSel(k,'to',t.to)}</div>`;
+  }).join('');
+  noteInput.value=p.note||'';
+}
+function openModal(k){
+  currentDate=k;const d=new Date(k+'T00:00:00'),p=ensure(data(),loggedUser),s=p.status[k]||'none',hn=holidayName(d);
+  modalTitle.innerHTML=`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）${hn?`<span style="display:block;font-size:13px;color:#e67e22;font-weight:700;margin-top:2px">${hn}</span>`:''}`;
+  modalPerson.textContent='入力者：'+loggedUser;
+  document.querySelectorAll('.opt').forEach(b=>b.classList.toggle('selected',b.dataset.status===s));
+  modal.classList.add('open');
+}
+document.querySelectorAll('.opt').forEach(b=>b.onclick=async()=>{
+  if(!isAdmin&&isDeadlinePassed(periodKey)){modal.classList.remove('open');alert('入力締切を過ぎたため変更できません。');renderInput();return;}
+  const d=data(),p=ensure(d,loggedUser);p.status[currentDate]=b.dataset.status;
+  modal.classList.remove('open');renderInputCalendar();
+  try{await save(d);}catch(e){console.error('保存に失敗しました',e);alert('保存に失敗しました。通信環境を確認してもう一度お試しください。');}
+});
+closeModal.onclick=()=>modal.classList.remove('open');
+
+function renderShare(){
+  const d=data();
+  shareCalendar.innerHTML=dates().map(x=>{
+    const k=iso(x),a=[],p=[],o=[];
+    Object.entries(d).forEach(([n,v])=>{if(v.status?.[k]=='abs')a.push(n);if(v.status?.[k]=='pref')p.push(n);if(v.status?.[k]=='off')o.push(n)});
+    const hn=holidayName(x);
+    return `<div class="day ${x.getDay()==0?'sun':''} ${x.getDay()==6?'sat':''} ${hn?'holiday':''}">
+      <div class="date">${fmt(x)}</div><div class="dow">${DOW[x.getDay()]}</div>
+      ${hn?`<span class="holiday-name" title="${hn}">${hn}</span>`:''}
+      <span class="badge ${a.length?'abs':'none'}">${a.length?'🔴 '+a.length+'人':'－'}</span>
+      <span class="badge ${p.length?'pref':'none'}">${p.length?'🟡 '+p.length+'人':'－'}</span>
+      <span class="badge ${o.length?'off':'none'}">${o.length?'🔵 '+o.length+'人':'－'}</span>
+      <button onclick="shareDetail('${k}')"></button>
+    </div>`;
+  }).join('');
+}
+function shareDetail(k){
+  const d=data(),a=[],p=[],o=[];Object.entries(d).forEach(([n,v])=>{if(v.status?.[k]=='abs')a.push(n);if(v.status?.[k]=='pref')p.push(n);if(v.status?.[k]=='off')o.push(n)});
+  const x=new Date(k+'T00:00:00');
+  shareDetailEl.innerHTML=`<h2>${fmt(x)}（${DOW[x.getDay()]}）</h2><b>🔴 絶対休み：${a.length}人</b><div class="people">${a.join(' ')||'なし'}</div><br><b>🟡 できれば休み：${p.length}人</b><div class="people">${p.join(' ')||'なし'}</div><br><b>🔵 有給休暇：${o.length}人</b><div class="people">${o.join(' ')||'なし'}</div>`;
+}
+const shareDetailEl=$('shareDetail');
+
+function renderAdmin(){
+  const d=data();
+  adminStaff.innerHTML=names().map((n,i)=>{
+    const p=ensure(d,n);
+    const rows=dates().map(x=>{
+      const k=iso(x),s=p.status[k]||'none';
+      const sl={none:'―',abs:'🔴 絶対休み',pref:'🟡 できれば休み',off:'🔵 有給休暇'}[s];
+      const t=p.time[k]||{},tm=(t.from||t.to)?(t.from||'指定なし')+'～'+(t.to||'指定なし'):'―';
+      return `<div class="admin-row"><span>${fmt(x)}(${DOW[x.getDay()]})</span><span>${sl}</span><span>${tm}</span></div>`;
+    }).join('');
+    const noteHtml=p.note?`<p class="small"><b>備考：</b>${p.note.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</p>`:'';
+    return `<div class="staff-card"><div class="staff-head" onclick="toggleStaff('s${i}')">${n}　▾</div><div class="staff-body" id="s${i}">
+      <div class="admin-row"><b>日付</b><b>休み希望</b><b>勤務可能時間</b></div>${rows}${noteHtml}</div></div>`;
+  }).join('');
+}
+function toggleStaff(id){const e=$(id);e.style.display=e.style.display==='none'?'block':'none'}
+
+function exportColumns(){
+  // 前半（16日～月末）は常に16列分（16～31日）確保し、実際の月末が31日未満の場合は
+  // 空白列（null）で埋めて後半（1日～15日）の位置を貼り付け先シートと揃える。
+  const ds=dates(),startMonth=ds[0].getMonth();
+  const firstSeg=ds.filter(x=>x.getMonth()===startMonth);
+  const secondSeg=ds.filter(x=>x.getMonth()!==startMonth);
+  while(firstSeg.length<16)firstSeg.push(null);
+  return [...firstSeg,...secondSeg];
+}
+function exportExcel(){
+  const d=data(),cols=exportColumns(),aoa=[],timeCells=[]; // timeCells: [row, col] 数値として書式設定する対象
+  let row=0;
+  names().forEach(n=>{
+    const p=ensure(d,n);
+    aoa.push([n,...cols.map(x=>x?fmt(x):'')]); row++;
+    aoa.push([n,...cols.map(x=>x?DOW[x.getDay()]:'')]); row++;
+    aoa.push([n,...cols.map((x,i)=>{
+      if(!x)return '';
+      const k=iso(x),s=p.status[k]||'none',t=p.time[k]||{};
+      if(s==='abs')return '定';
+      if(s==='pref')return '休';
+      if(s==='off')return '有';
+      if(t.from){timeCells.push([row,i+1]);return Number(t.from.replace(':',''));}
+      return '';
+    })]); row++;
+    aoa.push([n,...cols.map((x,i)=>{
+      if(!x)return '';
+      const k=iso(x),s=p.status[k]||'none',t=p.time[k]||{};
+      if(s==='abs'||s==='pref'||s==='off')return '';
+      if(t.to){timeCells.push([row,i+1]);return Number(t.to.replace(':',''));}
+      return '';
+    })]); row++;
+    if(p.note){aoa.push([n+'（備考）',p.note]); row++;}
+    aoa.push([]); row++;
+  });
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=[{wch:14},...cols.map(()=>({wch:8}))];
+  // 出退勤の時刻セルは数値として保存しつつ、0900のような4桁ゼロ埋め表示にする
+  timeCells.forEach(([r,c])=>{
+    const addr=XLSX.utils.encode_cell({r,c});
+    if(ws[addr])ws[addr].z='0000';
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'シフト希望');
+  XLSX.writeFile(wb,`シフト希望_${periodKey}.xlsx`);
+}
+exportBtn.onclick=exportExcel;
+
+function renderAll(){
+  const ds=dates(),a=ds[0],b=ds[ds.length-1];
+  periodLabel.textContent=`${a.getFullYear()}/${a.getMonth()+1}/${a.getDate()} ～ ${b.getFullYear()}/${b.getMonth()+1}/${b.getDate()}`;
+  if(!isAdmin){renderInput();renderShare()}else renderAdmin();
+}
+period.onchange=async()=>{periodKey=period.value;await loadPeriodData(periodKey);renderAll()};
+
+saveBtn.onclick=async()=>{
+  if(isDeadlinePassed(periodKey)){alert('入力締切を過ぎたため保存できません。');renderInput();return;}
+  const d=data(),p=ensure(d,loggedUser),tmp={};
+  document.querySelectorAll('[data-k][data-t]').forEach(e=>{
+    tmp[e.dataset.k]??={from:{},to:{}};
+    tmp[e.dataset.k][e.dataset.t][e.dataset.p]=e.value;
+  });
+  Object.entries(tmp).forEach(([k,v])=>{
+    const from=v.from.h&&v.from.m?v.from.h+':'+v.from.m:'',to=v.to.h&&v.to.m?v.to.h+':'+v.to.m:'';
+    if(from||to)p.time[k]={from,to};else delete p.time[k];
+  });
+  p.note=noteInput.value;
+  saveBtn.disabled=true;saveMsg.textContent='保存中…';
+  try{
+    await save(d);
+    saveMsg.textContent='保存しました';setTimeout(()=>saveMsg.textContent='',1500);renderAll();
+  }catch(e){
+    console.error('保存に失敗しました',e);saveMsg.textContent='保存に失敗しました。もう一度お試しください。';
+  }finally{saveBtn.disabled=false;}
+};
+
+// ▼▼▼ 用紙の写真からの自動読み込み（OCR） ▼▼▼
+ocrBtn.onclick=()=>ocrFileInput.click();
+ocrFileInput.onchange=async()=>{
+  const file=ocrFileInput.files[0];
+  if(!file)return;
+  ocrFileInput.value='';
+  if(isDeadlinePassed(periodKey)){alert('入力締切を過ぎたため読み込めません。');return;}
+  ocrBtn.disabled=true;ocrMsg.textContent='画像を処理中…';
+  try{
+    const base64=await resizeAndEncodeImage(file);
+    ocrMsg.textContent='用紙を読み取っています…（10秒ほどかかることがあります）';
+    const ds=dates().map(iso);
+    const result=await apiOcr(base64,ds);
+    applyOcrResult(result);
+    ocrMsg.textContent='読み込みました。内容を確認して保存してください。';
+    setTimeout(()=>{ocrMsg.textContent='';},4000);
+  }catch(e){
+    console.error('読み取りに失敗しました',e);
+    ocrMsg.textContent='';
+    alert('読み取りに失敗しました。もう一度お試しいただくか、手入力をお願いします。');
+  }finally{
+    ocrBtn.disabled=false;
+  }
+};
+// スマホ写真は容量が大きいため、送信前に縮小してJPEGに変換する
+function resizeAndEncodeImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error('画像の読み込みに失敗しました'));
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error('画像の読み込みに失敗しました'));
+      img.onload=()=>{
+        const maxW=1600,scale=Math.min(1,maxW/img.width);
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.round(img.width*scale);
+        canvas.height=Math.round(img.height*scale);
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL('image/jpeg',0.85).split(',')[1]);
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+// 読み取り結果（{statuses,times,note}）を、今ログイン中のスタッフの入力欄に反映する。
+// この時点ではまだサーバーには保存しない（本人が確認して「保存」を押すまでは反映のみ）。
+function applyOcrResult(result){
+  const d=data(),p=ensure(d,loggedUser);
+  if(result&&result.statuses){
+    Object.entries(result.statuses).forEach(([k,v])=>{
+      if(v==='abs'||v==='pref')p.status[k]=v;else delete p.status[k];
+    });
+  }
+  if(result&&result.times){
+    Object.entries(result.times).forEach(([k,v])=>{
+      if(v&&(v.from||v.to))p.time[k]={from:v.from||'',to:v.to||''};
+    });
+  }
+  if(result&&typeof result.note==='string'&&result.note.trim()){
+    p.note=result.note.trim();
+  }
+  renderInput();
+}
+// ▲▲▲ 用紙の写真からの自動読み込み ここまで ▲▲▲
+
+tabInput.onclick=()=>{inputView.style.display='block';shareView.style.display='none';tabInput.classList.add('active');tabShare.classList.remove('active')};
+tabShare.onclick=()=>{inputView.style.display='none';shareView.style.display='block';tabInput.classList.remove('active');tabShare.classList.add('active');renderShare()};
+
+function openChoice(){
+  loginOverlay.style.display='flex';firstSetup.style.display='none';loginChoice.style.display='block';
+  staffLoginBox.style.display='none';adminLoginBox.style.display='none';
+}
+function showStaffLogin(){
+  loginChoice.style.display='none';staffLoginBox.style.display='block';adminLoginBox.style.display='none';
+  staffNameLogin.innerHTML=names().map(n=>`<option>${n}</option>`).join('');
+  const lastName=localStorage.getItem('lastStaffName');
+  if(lastName&&names().includes(lastName))staffNameLogin.value=lastName;
+}
+function showAdminLogin(){loginChoice.style.display='none';staffLoginBox.style.display='none';adminLoginBox.style.display='block'}
+
+function initialSetup(){
+  const ns=setupNames.value.split(/\n|,/).map(x=>x.trim()).filter(Boolean),ap=setupAdminPw.value.trim();
+  if(!ns.length||!ap){setupError.textContent='スタッフ名と管理者パスワードを入力してください。';return;}
+  let fields='<h3>各スタッフのパスワード</h3><p class="notice">スタッフ本人に伝えるパスワードを設定してください。</p>';
+  ns.forEach((n,i)=>fields+=`<label>${n} のパスワード</label><input type="password" class="setupStaffPw" data-name="${encodeURIComponent(n)}" placeholder="パスワード">`);
+  setupPasswordArea.innerHTML=fields;
+  setupPasswordArea.dataset.names=JSON.stringify(ns);
+  setupNext.style.display='none';
+  const btn=document.createElement('button');btn.className='primary';btn.textContent='初期設定を完了する';btn.id='setupFinish';setupPasswordArea.appendChild(btn);
+  bindTap(btn,async()=>{
+    const acc={};let ok=true;
+    document.querySelectorAll('.setupStaffPw').forEach(e=>{e.blur();if(!e.value)ok=false;acc[decodeURIComponent(e.dataset.name)]=e.value});
+    if(!ok){setupError.textContent='全スタッフのパスワードを入力してください。';return}
+    btn.disabled=true;btn.textContent='保存中…';
+    try{
+      await saveConfig(ns,acc,ap);
+      alert('初期設定が完了しました。');
+      location.reload();
+    }catch(e){
+      console.error('初期設定の保存に失敗しました',e);
+      setupError.textContent='保存に失敗しました。通信環境を確認してもう一度お試しください。';
+      btn.disabled=false;btn.textContent='初期設定を完了する';
+    }
+  });
+}
+bindTap(setupNext,initialSetup);
+
+staffLoginChoice.onclick=showStaffLogin;
+adminLoginChoice.onclick=showAdminLogin;
+backChoice1.onclick=openChoice;backChoice2.onclick=openChoice;
+
+bindTap(staffLoginBtn,async()=>{
+  const n=staffNameLogin.value,p=staffPwLogin.value,acc=staffAccounts();
+  staffPwLogin.blur(); // タップ直後にキーボードを閉じる
+  if(acc[n]!==p){staffLoginError.textContent='名前またはパスワードが違います。';return}
+  localStorage.setItem('lastStaffName',n);
+  loggedUser=n;isAdmin=false;
+  staffLoginBtn.disabled=true;staffLoginBtn.textContent='読み込み中…';staffLoginError.textContent='';
+  try{
+    makePeriods();await preloadPeriods();
+    loginOverlay.style.display='none';staffArea.style.display='block';adminView.style.display='none';
+    currentUser.textContent='ログイン中：'+n;renderAll();
+  }catch(e){
+    console.error('データの読み込みに失敗しました',e);staffLoginError.textContent='データの読み込みに失敗しました。もう一度お試しください。';
+  }finally{staffLoginBtn.disabled=false;staffLoginBtn.textContent='ログイン';}
+});
+bindTap(adminLoginBtn,async()=>{
+  adminPwLogin.blur(); // タップ直後にキーボードを閉じる
+  if(adminPwLogin.value!==cachedAdminPassword){adminLoginError.textContent='パスワードが違います。';return}
+  isAdmin=true;loggedUser='管理者';
+  adminLoginBtn.disabled=true;adminLoginBtn.textContent='読み込み中…';adminLoginError.textContent='';
+  try{
+    makePeriods();await preloadPeriods();
+    loginOverlay.style.display='none';staffArea.style.display='none';adminView.style.display='block';
+    currentUser.textContent='管理者';renderAll();
+  }catch(e){
+    console.error('データの読み込みに失敗しました',e);adminLoginError.textContent='データの読み込みに失敗しました。もう一度お試しください。';
+  }finally{adminLoginBtn.disabled=false;adminLoginBtn.textContent='管理者としてログイン';}
+});
+logoutBtn.onclick=()=>location.reload();
+
+staffManageBtn.onclick=()=>{
+  deadlinePanel.style.display='none';
+  staffManage.style.display=staffManage.style.display==='none'?'block':'none';
+  manageStaff.value=names().map(n=>`${n}｜${staffAccounts()[n]||''}`).join('\n');
+};
+
+function renderDeadlineList(){
+  deadlineList.innerHTML=[...period.options].map(o=>{
+    const key=o.value,label=o.textContent,val=deadlineFor(key);
+    return `<div class="row" style="justify-content:space-between;margin:8px 0"><span class="small">${label}</span><input type="date" data-period="${key}" value="${val}"></div>`;
+  }).join('');
+}
+deadlineBtn.onclick=()=>{
+  staffManage.style.display='none';
+  const willShow=deadlinePanel.style.display==='none';
+  deadlinePanel.style.display=willShow?'block':'none';
+  if(willShow)renderDeadlineList();
+};
+deadlineSave.onclick=async()=>{
+  const dl={...cachedDeadlines};
+  deadlineList.querySelectorAll('input[data-period]').forEach(inp=>{
+    if(inp.value)dl[inp.dataset.period]=inp.value;else delete dl[inp.dataset.period];
+  });
+  deadlineMsg.textContent='保存中…';
+  try{
+    await saveDeadlines(dl);
+    deadlineMsg.textContent='保存しました';setTimeout(()=>deadlineMsg.textContent='',1500);
+  }catch(e){
+    console.error('締切設定の保存に失敗しました',e);
+    deadlineMsg.textContent='保存に失敗しました。もう一度お試しください。';
+  }
+};
+manageSave.onclick=async()=>{
+  const lines=manageStaff.value.split('\n').map(x=>x.trim()).filter(Boolean),ns=[],acc={};
+  for(const line of lines){
+    const [n,p]=line.split('｜');
+    if(!n||!p){manageMsg.textContent='形式は「名前｜パスワード」です。';return}
+    ns.push(n.trim());acc[n.trim()]=p.trim();
+  }
+  if(!ns.length){manageMsg.textContent='スタッフを1人以上登録してください。';return}
+  manageMsg.textContent='保存中…';
+  try{
+    await saveConfig(ns,acc);
+    manageMsg.textContent='保存しました';renderAdmin();setTimeout(()=>manageMsg.textContent='',1500);
+  }catch(e){
+    console.error('スタッフ設定の保存に失敗しました',e);manageMsg.textContent='保存に失敗しました。もう一度お試しください。';
+  }
+};
+
+async function boot(){
+  loginOverlay.style.display='flex';firstSetup.style.display='none';loginChoice.style.display='none';
+  staffLoginBox.style.display='none';adminLoginBox.style.display='none';
+  const loadingMsg=document.createElement('p');loadingMsg.id='bootLoading';loadingMsg.className='notice';loadingMsg.textContent='読み込み中…';
+  document.querySelector('.loginBox').prepend(loadingMsg);
+  try{
+    await loadConfig();
+  }catch(e){
+    console.error('設定の読み込みに失敗しました',e);
+  }
+  loadingMsg.remove();
+  const ns=names();
+  if(!ns.length||!cachedAdminPassword||!Object.keys(staffAccounts()).length){
+    firstSetup.style.display='block';loginChoice.style.display='none';
+  }else{
+    firstSetup.style.display='none';openChoice();
+  }
+  makePeriods();
+}
+boot();
+</script>
+</body>
+</html>
