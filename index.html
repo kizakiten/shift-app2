@@ -43,7 +43,7 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
 .day button{position:absolute;inset:0;background:transparent}
 .legend{font-size:12px;display:flex;gap:12px;flex-wrap:wrap}
 .time-row{display:grid;grid-template-columns:82px 1fr 1fr;gap:7px;align-items:center;border-bottom:1px solid #eee;padding:6px 0}
-.time-selects{display:grid;grid-template-columns:1fr 1fr;gap:5px}.time-selects select{width:100%;padding:8px}
+.time-selects{display:grid;grid-template-columns:1fr 1fr;gap:4px}.time-selects select{width:100%;padding:6px 3px;font-size:13px}
 .staff-card{border:1px solid #ddd;border-radius:12px;margin:8px 0;overflow:hidden}.staff-head{padding:12px;background:#f0f1f3;font-weight:800;cursor:pointer}
 .staff-body{padding:10px}.admin-row{display:grid;grid-template-columns:70px 115px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid #eee;font-size:13px;align-items:center}
 .people span{display:inline-block;background:#eef0f3;border-radius:99px;padding:3px 8px;margin:2px;font-size:12px}
@@ -56,7 +56,7 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
 .passwordGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 @media(max-width:400px){h1{font-size:17px}.loginBox h2{font-size:15px}}
 @media(max-width:340px){h1{font-size:15px}.loginBox h2{font-size:14px}}
-@media(max-width:500px){.day{min-height:98px;padding:4px}.date{font-size:12px}.badge{font-size:9px}.admin-row{grid-template-columns:58px 92px 1fr;font-size:12px}.time-row{grid-template-columns:65px 1fr 1fr}.passwordGrid{grid-template-columns:1fr}}
+@media(max-width:500px){.day{min-height:98px;padding:4px}.date{font-size:12px}.badge{font-size:9px}.admin-row{grid-template-columns:58px 92px 1fr;font-size:12px}.time-row{grid-template-columns:56px 1fr 1fr}.time-selects select{font-size:12px;padding:6px 2px}.passwordGrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -432,7 +432,7 @@ function renderInput(){
   renderInputCalendar();
   timeList.innerHTML=dates().map(x=>{
     const k=iso(x),t=p.time[k]||{},hn=holidayName(x);
-    return `<div class="time-row"><span>${fmt(x)}(${DOW[x.getDay()]})${hn?`<br><span style="color:#e67e22;font-size:10px;font-weight:700">(祝)</span>`:''}</span>${timeSel(k,'from',t.from)}${timeSel(k,'to',t.to)}</div>`;
+    return `<div class="time-row"><span>${fmt(x)}<br>(${DOW[x.getDay()]})${hn?`<br><span style="color:#e67e22;font-size:10px;font-weight:700">(祝)</span>`:''}</span>${timeSel(k,'from',t.from)}${timeSel(k,'to',t.to)}</div>`;
   }).join('');
   noteInput.value=p.note||'';
 }
