@@ -31,8 +31,6 @@ h1{font-size:20px;margin:0 0 10px}h2{font-size:18px}.card{background:#fff;border
 select,input,textarea{font:inherit;border:1px solid #ccc;border-radius:9px;padding:9px;background:#fff}
 button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}.primary{background:#222;color:#fff}.secondary{background:#eee}
 .notice,.small{font-size:12px;color:#666;line-height:1.6}
-details summary{list-style:none}details summary::-webkit-details-marker{display:none}
-details summary::before{content:'▸ ';color:#888}details[open] summary::before{content:'▾ '}
 #deadlineInfo{color:#c00;font-weight:700}
 .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.tab{background:#e9ebef;font-size:13px;padding:6px 10px;border-radius:8px}.tab.active{background:#222;color:#fff}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
@@ -134,16 +132,11 @@ details summary::before{content:'▸ ';color:#888}details[open] summary::before{
             <input type="file" id="ocrFileInput" accept="image/*" style="display:none">
             <span id="ocrMsg" class="small"></span>
           </div>
-          <details style="margin-top:4px">
-            <summary class="notice" style="cursor:pointer;color:#1a4fb4">使い方の説明を見る</summary>
-            <p class="notice" style="margin:6px 0 0">用紙から入力欄に自動反映します。内容を確認して間違っているところは手動で訂正の上、最後に保存を押してください。</p>
-          </det
+          <p class="notice" id="ocrHelpToggle" style="margin:6px 0 0;color:#1a4fb4;cursor:pointer">▸ 使い方の説明を見る</p>
+          <p class="notice" id="ocrHelpText" style="margin:6px 0 0;display:none">定休希望用紙を写真で取って、その画像から入力欄に自動反映します。反映後は内容を確認して保存してください。間違っているところは手動で訂正してから保存を押してください。</p>
         </div>
         <div class="card">
-          <details>
-            <summary class="notice" style="cursor:pointer;color:#1a4fb4">入力についての注意事項を見る</summary>
-            <p class="notice" style="margin:6px 0 0">休み希望の日はすべて記入してください。それ以外の日は出勤可能と判断します。一番下の「保存」を忘れず押してください。 ※入力・修正は毎月1日までにお願いします</p>
-          </details>
+          <p class="notice">休み希望の日はすべて記入してください。それ以外の日は出勤可能と判断します。一番下の「保存」を忘れず押してください。 ※入力・修正は毎月1日までにお願いします</p>
           <p class="notice" id="deadlineInfo"></p>
           <div class="legend">🔴 絶対休み　 🟡 できれば休み　 🔵 有給休暇　 </div>
         </div>
@@ -638,6 +631,12 @@ function applyOcrResult(result){
   renderInput();
 }
 // ▲▲▲ 用紙の写真からの自動読み込み ここまで ▲▲▲
+
+ocrHelpToggle.onclick=()=>{
+  const open=ocrHelpText.style.display!=='none';
+  ocrHelpText.style.display=open?'none':'block';
+  ocrHelpToggle.textContent=(open?'▸ ':'▾ ')+'使い方の説明を見る';
+};
 
 tabInput.onclick=()=>{inputView.style.display='block';shareView.style.display='none';tabInput.classList.add('active');tabShare.classList.remove('active')};
 tabShare.onclick=()=>{inputView.style.display='none';shareView.style.display='block';tabInput.classList.remove('active');tabShare.classList.add('active');renderShare()};
