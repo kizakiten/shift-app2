@@ -31,6 +31,8 @@ h1{font-size:20px;margin:0 0 10px}h2{font-size:18px}.card{background:#fff;border
 select,input,textarea{font:inherit;border:1px solid #ccc;border-radius:9px;padding:9px;background:#fff}
 button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}.primary{background:#222;color:#fff}.secondary{background:#eee}
 .notice,.small{font-size:12px;color:#666;line-height:1.6}
+details summary{list-style:none}details summary::-webkit-details-marker{display:none}
+details summary::before{content:'▸ ';color:#888}details[open] summary::before{content:'▾ '}
 #deadlineInfo{color:#c00;font-weight:700}
 .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.tab{background:#e9ebef;font-size:13px;padding:6px 10px;border-radius:8px}.tab.active{background:#222;color:#fff}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
@@ -132,10 +134,16 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
             <input type="file" id="ocrFileInput" accept="image/*" style="display:none">
             <span id="ocrMsg" class="small"></span>
           </div>
-          <p class="notice" style="margin:6px 0 0">用紙から入力欄に自動反映します。内容を確認して違うところは手動で訂正の上保存してください。</p>
+          <details style="margin-top:4px">
+            <summary class="notice" style="cursor:pointer;color:#1a4fb4">使い方の説明を見る</summary>
+            <p class="notice" style="margin:6px 0 0">用紙から入力欄に自動反映します。内容を確認して間違っているところは手動で訂正の上、最後に保存を押してください。</p>
+          </det
         </div>
         <div class="card">
-          <p class="notice">休み希望の日はすべて記入してください。それ以外の日は出勤可能と判断します。一番下の「保存」を忘れず押してください。 ※入力・修正は毎月1日までにお願いします</p>
+          <details>
+            <summary class="notice" style="cursor:pointer;color:#1a4fb4">入力についての注意事項を見る</summary>
+            <p class="notice" style="margin:6px 0 0">休み希望の日はすべて記入してください。それ以外の日は出勤可能と判断します。一番下の「保存」を忘れず押してください。 ※入力・修正は毎月1日までにお願いします</p>
+          </details>
           <p class="notice" id="deadlineInfo"></p>
           <div class="legend">🔴 絶対休み　 🟡 できれば休み　 🔵 有給休暇　 </div>
         </div>
