@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -54,6 +55,8 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
 .loginBox button{width:100%;margin-top:7px}.error{color:#b00000;font-size:12px;min-height:18px}.success{color:#147a32;font-size:12px}
 .adminBar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px}
 .passwordGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.help-title{font-weight:700;color:#444;margin-top:10px}
+.help-step{padding-left:1.6em;text-indent:-1.6em}
 @media(max-width:400px){h1{font-size:17px}.loginBox h2{font-size:15px}}
 @media(max-width:340px){h1{font-size:15px}.loginBox h2{font-size:14px}}
 @media(max-width:500px){.day{min-height:98px;padding:4px}.date{font-size:12px}.badge{font-size:9px}.admin-row{grid-template-columns:58px 92px 1fr;font-size:12px}.time-row{grid-template-columns:60px 1fr 1fr}.time-selects select{font-size:15px;padding:7px 3px}.passwordGrid{grid-template-columns:1fr}}
@@ -133,7 +136,24 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
             <span id="ocrMsg" class="small"></span>
           </div>
           <p class="notice" id="ocrHelpToggle" style="margin:6px 0 0;color:#1a4fb4;cursor:pointer">▸ 使い方の説明を見る</p>
-          <p class="notice" id="ocrHelpText" style="margin:6px 0 0;display:none">定休希望用紙を写真で取って、その画像から入力欄に自動反映します。反映後は内容を確認して保存してください。間違っているところは手動で訂正してから保存を押してください。</p>
+          <div class="notice" id="ocrHelpText" style="margin:6px 0 0;display:none">
+            <p style="margin:0">定休希望用紙を写真で取って、その画像から入力欄に自動反映します。反映後は内容を確認して保存してください。間違っているところは手動で訂正してから保存を押してください。</p>
+
+            <div class="help-title">●LINEのブラウザでアプリを開く場合</div>
+            <div class="help-step">①事前にスマホで定休希望用紙を写真に撮る</div>
+            <div class="help-step">②スマホで休み希望アプリを開く</div>
+            <div class="help-step">➂「用紙の写真から読み込む」ボタン押す</div>
+            <div class="help-step">④先ほど写した画像を選ぶ</div>
+            <div class="help-step">➄読み込みが完了したら間違いがないか確認して、間違いがあれば手動で訂正してから保存ボタンを押す</div>
+
+            <div class="help-title">●デフォルトのブラウザでアプリを開く場合</div>
+            <div class="help-step">①スマホで休み希望アプリを開く</div>
+            <div class="help-step">②「用紙の写真から読み込む」ボタン押す</div>
+            <div class="help-step">➂「カメラ」を押す</div>
+            <div class="help-step">④起動したカメラで定休希望用紙を写真に撮る</div>
+            <div class="help-step">➄保存を押す</div>
+            <div class="help-step">⑥読み込みが完了したら間違いがないか確認して、間違いがあれば手動で訂正してから保存ボタンを押す</div>
+          </div>
         </div>
         <div class="card">
           <p class="notice">休み希望の日はすべて記入してください。それ以外の日は出勤可能と判断します。一番下の「保存」を忘れず押してください。 ※入力・修正は毎月1日までにお願いします</p>
@@ -287,7 +307,7 @@ const HOLIDAY_MAP=buildHolidayMap(new Date().getFullYear()-1,new Date().getFullY
 function holidayName(d){return HOLIDAY_MAP[iso(d)]||null;}
 /* ▲▲▲ 祝日計算ここまで ▲▲▲ */
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwB6hFzuiXYeWvN4ah8jKQrthn_-ilwb11BP0qa2mc-mubyZt0yznmBRUjUDzFMnZzH/exec';
+const API_URL = 'https://デプロイ';
 
 async function apiGet(key){
   const res=await fetch(API_URL+'?action=get&key='+encodeURIComponent(key));
