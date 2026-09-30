@@ -307,7 +307,7 @@ const HOLIDAY_MAP=buildHolidayMap(new Date().getFullYear()-1,new Date().getFullY
 function holidayName(d){return HOLIDAY_MAP[iso(d)]||null;}
 /* ▲▲▲ 祝日計算ここまで ▲▲▲ */
 
-const API_URL = 'https://デプロイ';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwB6hFzuiXYeWvN4ah8jKQrthn_-ilwb11BP0qa2mc-mubyZt0yznmBRUjUDzFMnZzH/exec';
 
 async function apiGet(key){
   const res=await fetch(API_URL+'?action=get&key='+encodeURIComponent(key));
