@@ -135,9 +135,9 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
             <input type="file" id="ocrFileInput" accept="image/*" style="display:none">
             <span id="ocrMsg" class="small"></span>
           </div>
-          <p class="notice" id="ocrHelpToggle" style="margin:6px 0 0;color:#1a4fb4;cursor:pointer">▸ 使い方の説明を見る</p>
-          <div class="notice" id="ocrHelpText" style="margin:6px 0 0;display:none">
-            <p style="margin:0">定休希望用紙を写真で取って、その画像から入力欄に自動反映します。反映後は内容を確認して保存してください。間違っているところは手動で訂正してから保存を押してください。</p>
+          <p class="notice" id="ocrHelpToggle" style="margin:6px 0 0;color:#1a4fb4;cursor:pointer;font-size:14px">▸ 使い方の説明を見る</p>
+          <div class="notice" id="ocrHelpText" style="margin:6px 0 0;display:none;font-size:14px">
+            <p style="margin:0">定休希望用紙を写真で撮って、その画像から入力欄に自動反映します。反映後は内容を確認して保存してください。</p>
 
             <div class="help-title">●LINEのブラウザでアプリを開く場合</div>
             <div class="help-step">①事前にスマホで定休希望用紙を写真に撮る</div>
@@ -566,7 +566,7 @@ ocrFileInput.onchange=async()=>{
   ocrBtn.disabled=true;ocrMsg.textContent='画像を処理中…';
   try{
     const base64=await resizeAndEncodeImage(file);
-    ocrMsg.textContent='用紙を読み取っています…（10秒ほどかかることがあります）';
+    ocrMsg.textContent='用紙を読み取っています…（すごく時間掛かる時があります）';
     const ds=dates().map(iso);
     const result=await apiOcr(base64,ds);
     applyOcrResult(result);
