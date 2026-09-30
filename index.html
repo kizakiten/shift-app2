@@ -309,7 +309,7 @@ const HOLIDAY_MAP=buildHolidayMap(new Date().getFullYear()-1,new Date().getFullY
 function holidayName(d){return HOLIDAY_MAP[iso(d)]||null;}
 /* ▲▲▲ 祝日計算ここまで ▲▲▲ */
 
-const API_URL = 'https://https://script.google.com/macros/s/AKfycbwB6hFzuiXYeWvN4ah8jKQrthn_-ilwb11BP0qa2mc-mubyZt0yznmBRUjUDzFMnZzH/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwB6hFzuiXYeWvN4ah8jKQrthn_-ilwb11BP0qa2mc-mubyZt0yznmBRUjUDzFMnZzH/exec';
 
 let authToken='';
 // サーバーとの通信はすべてここを通す。ログイン後は自動でトークンを付ける。
@@ -772,7 +772,8 @@ async function boot(){
   }catch(e){
     console.error('設定の読み込みに失敗しました',e);
     loadingMsg.className='error';
-    loadingMsg.textContent='サーバーに接続できませんでした。通信環境を確認して、ページを再読み込みしてください。';
+    loadingMsg.textContent='サーバーに接続できませんでした。通信環境を確認して、ページを再読み込みしてください。\n（原因: '+(e&&e.message?e.message:e)+'）';
+    loadingMsg.style.whiteSpace='pre-wrap';
     return;
   }
   loadingMsg.remove();
