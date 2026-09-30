@@ -206,8 +206,10 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
     </div>
     <div class="card" id="staffManage" style="display:none">
       <h2>スタッフ設定</h2>
-      <p class="notice">スタッフ名とパスワードは管理者だけが変更できます。1行につき「名前｜パスワード」で入力します。</p>
+      <p class="notice">スタッフ名とパスワードは管理者だけが変更できます。1行につき「名前｜パスワード」で入力します。<br>セキュリティのため、登録済みのパスワードは表示されません。パスワードを変えない人は「名前｜」のまま（パスワード欄は空）にしてください。新しく追加する人・名前を変える人は、パスワードの入力が必要です。</p>
       <textarea id="manageStaff" rows="10" style="width:100%"></textarea>
+      <p class="notice" style="margin-bottom:0">管理者パスワードを変更する場合のみ入力してください。</p>
+      <input id="newAdminPw" type="password" placeholder="変更しない場合は空欄" style="width:100%;margin:6px 0 10px">
       <button class="primary" id="manageSave">保存</button>
       <span id="manageMsg" class="small"></span>
     </div>
@@ -307,78 +309,49 @@ const HOLIDAY_MAP=buildHolidayMap(new Date().getFullYear()-1,new Date().getFullY
 function holidayName(d){return HOLIDAY_MAP[iso(d)]||null;}
 /* ▲▲▲ 祝日計算ここまで ▲▲▲ */
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwB6hFzuiXYeWvN4ah8jKQrthn_-ilwb11BP0qa2mc-mubyZt0yznmBRUjUDzFMnZzH/exec';
+const API_URL = 'https://https://script.google.com/macros/s/AKfycbwB6hFzuiXYeWvN4ah8jKQrthn_-ilwb11BP0qa2mc-mubyZt0yznmBRUjUDzFMnZzH/exec';
 
-async function apiGet(key){
-  const res=await fetch(API_URL+'?action=get&key='+encodeURIComponent(key));
-  if(!res.ok)throw new Error('取得に失敗しました: '+res.status);
-  const j=await res.json();
-  if(j.error)throw new Error(j.error);
-  return j.value; // 文字列 or null
-}
-async function apiGetMany(keys){
-  const res=await fetch(API_URL+'?action=getMany&keys='+encodeURIComponent(keys.join(',')));
-  if(!res.ok)throw new Error('取得に失敗しました: '+res.status);
-  const j=await res.json();
-  if(j.error)throw new Error(j.error);
-  return j.values; // {key: value, ...} の形
-}
-async function apiSet(key,value){
+let authToken='';
+// サーバーとの通信はすべてここを通す。ログイン後は自動でトークンを付ける。
+async function api(action,payload){
   const res=await fetch(API_URL,{
     method:'POST',
     headers:{'Content-Type':'text/plain'}, // プリフライトを避けるためtext/plainで送る
-    body:JSON.stringify({action:'set',key,value})
-  });
-  if(!res.ok)throw new Error('保存に失敗しました: '+res.status);
-  const j=await res.json();
-  if(j.error)throw new Error(j.error);
-  return j;
-}
-async function apiOcr(base64,dateList){
-  const res=await fetch(API_URL,{
-    method:'POST',
-    headers:{'Content-Type':'text/plain'},
-    body:JSON.stringify({action:'ocr',image:base64,dates:dateList})
+    body:JSON.stringify(Object.assign({action,token:authToken},payload||{}))
   });
   if(!res.ok)throw new Error('通信エラー: '+res.status);
   const raw=await res.text();
   let j;
   try{j=JSON.parse(raw);}catch(_){throw new Error('サーバーの応答が不正です（Apps Scriptのデプロイ更新・権限承認を確認してください）: '+raw.slice(0,80));}
-  if(j.error)throw new Error(j.error);
+  if(j.error){
+    if(j.code==='auth'&&authToken){alert(j.error);location.reload();}
+    const err=new Error(j.error);err.server=true;throw err;
+  }
+  return j;
+}
+async function apiOcr(base64,dateList){
+  const j=await api('ocr',{image:base64,dates:dateList});
   return j.result; // {statuses:{iso:'abs'|'pref'|'none'}, times:{iso:{from,to}}, note:string}
 }
 
 function names(){return cachedNames}
-function staffAccounts(){return cachedAccounts}
 function data(){return periodDataCache[periodKey]||{}}
-function save(d){
-  periodDataCache[periodKey]=d;
-  return apiSet('period:'+periodKey, JSON.stringify(d));
+// 保存は「ログイン中の本人の分だけ」をサーバーに送る（他の人のデータには触れない）
+function save(){
+  const d=data();periodDataCache[periodKey]=d;
+  return api('saveMine',{period:periodKey,entry:ensure(d,loggedUser)});
 }
 function ensure(d,n){d[n]??={status:{},time:{},note:''};d[n].note??='';return d[n]}
 
-let cachedNames=[],cachedAccounts={},cachedAdminPassword=null,cachedDeadlines={},periodDataCache={};
+let cachedNames=[],cachedDeadlines={},periodDataCache={},configured=false;
 
 async function loadConfig(){
-  try{
-    const v=await apiGetMany(['config:names','config:accounts','config:adminPassword','config:deadlines']);
-    cachedNames=v['config:names']?JSON.parse(v['config:names']):[];
-    cachedAccounts=v['config:accounts']?JSON.parse(v['config:accounts']):{};
-    cachedAdminPassword=v['config:adminPassword']||null;
-    cachedDeadlines=v['config:deadlines']?JSON.parse(v['config:deadlines']):{};
-  }catch(e){
-    console.error(e);cachedNames=[];cachedAccounts={};cachedAdminPassword=null;cachedDeadlines={};
-  }
+  const v=await api('init');
+  cachedNames=v.names||[];configured=!!v.configured;
 }
-async function saveConfig(ns,acc,ap){
-  cachedNames=ns;cachedAccounts=acc;
-  const tasks=[apiSet('config:names',JSON.stringify(ns)),apiSet('config:accounts',JSON.stringify(acc))];
-  if(ap!==undefined){cachedAdminPassword=ap;tasks.push(apiSet('config:adminPassword',ap));}
-  await Promise.all(tasks);
-}
-function saveDeadlines(dl){
+async function saveDeadlines(dl){
+  await api('setDeadlines',{deadlines:dl});
   cachedDeadlines=dl;
-  return apiSet('config:deadlines',JSON.stringify(dl));
 }
 function deadlineFor(key){return cachedDeadlines[key]||'';}
 function isDeadlinePassed(key){
@@ -389,23 +362,20 @@ function isDeadlinePassed(key){
 async function loadPeriodData(key){
   if(periodDataCache[key])return periodDataCache[key];
   try{
-    const v=await apiGet('period:'+key);
-    periodDataCache[key]=v?JSON.parse(v):{};
+    const v=(await api('getMany',{keys:['period:'+key]})).values;
+    periodDataCache[key]=v['period:'+key]?JSON.parse(v['period:'+key]):{};
   }catch(e){console.error(e);periodDataCache[key]={};}
   return periodDataCache[key];
 }
+// ログイン直後に、対象期間のデータと締切設定をまとめて取得する
 async function preloadPeriods(){
   const opts=[...period.options].map(o=>o.value);
-  try{
-    const v=await apiGetMany(opts.map(k=>'period:'+k));
-    opts.forEach(k=>{
-      const raw=v['period:'+k];
-      periodDataCache[k]=raw?JSON.parse(raw):{};
-    });
-  }catch(e){
-    console.error(e);
-    opts.forEach(k=>{ if(!periodDataCache[k]) periodDataCache[k]={}; });
-  }
+  const v=(await api('getMany',{keys:[...opts.map(k=>'period:'+k),'config:deadlines']})).values;
+  cachedDeadlines=v['config:deadlines']?JSON.parse(v['config:deadlines']):{};
+  opts.forEach(k=>{
+    const raw=v['period:'+k];
+    periodDataCache[k]=raw?JSON.parse(raw):{};
+  });
 }
 
 
@@ -468,7 +438,7 @@ document.querySelectorAll('.opt').forEach(b=>b.onclick=async()=>{
   if(!isAdmin&&isDeadlinePassed(periodKey)){modal.classList.remove('open');alert('入力締切を過ぎたため変更できません。');renderInput();return;}
   const d=data(),p=ensure(d,loggedUser);p.status[currentDate]=b.dataset.status;
   modal.classList.remove('open');renderInputCalendar();
-  try{await save(d);}catch(e){console.error('保存に失敗しました',e);alert('保存に失敗しました。通信環境を確認してもう一度お試しください。');}
+  try{await save();}catch(e){console.error('保存に失敗しました',e);alert(e.server?e.message:'保存に失敗しました。通信環境を確認してもう一度お試しください。');}
 });
 closeModal.onclick=()=>modal.classList.remove('open');
 
@@ -579,10 +549,10 @@ saveBtn.onclick=async()=>{
   p.note=noteInput.value;
   saveBtn.disabled=true;saveMsg.textContent='保存中…';
   try{
-    await save(d);
+    await save();
     saveMsg.textContent='保存しました';setTimeout(()=>saveMsg.textContent='',1500);renderAll();
   }catch(e){
-    console.error('保存に失敗しました',e);saveMsg.textContent='保存に失敗しました。もう一度お試しください。';
+    console.error('保存に失敗しました',e);saveMsg.textContent=e.server?e.message:'保存に失敗しました。もう一度お試しください。';
   }finally{saveBtn.disabled=false;}
 };
 
@@ -688,12 +658,12 @@ function initialSetup(){
     if(!ok){setupError.textContent='全スタッフのパスワードを入力してください。';return}
     btn.disabled=true;btn.textContent='保存中…';
     try{
-      await saveConfig(ns,acc,ap);
+      await api('setup',{names:ns,adminPassword:ap,passwords:acc});
       alert('初期設定が完了しました。');
       location.reload();
     }catch(e){
       console.error('初期設定の保存に失敗しました',e);
-      setupError.textContent='保存に失敗しました。通信環境を確認してもう一度お試しください。';
+      setupError.textContent=e.server?e.message:'保存に失敗しました。通信環境を確認してもう一度お試しください。';
       btn.disabled=false;btn.textContent='初期設定を完了する';
     }
   });
@@ -705,31 +675,36 @@ adminLoginChoice.onclick=showAdminLogin;
 backChoice1.onclick=openChoice;backChoice2.onclick=openChoice;
 
 bindTap(staffLoginBtn,async()=>{
-  const n=staffNameLogin.value,p=staffPwLogin.value,acc=staffAccounts();
+  const n=staffNameLogin.value,p=staffPwLogin.value;
   staffPwLogin.blur(); // タップ直後にキーボードを閉じる
-  if(acc[n]!==p){staffLoginError.textContent='名前またはパスワードが違います。';return}
-  localStorage.setItem('lastStaffName',n);
-  loggedUser=n;isAdmin=false;
-  staffLoginBtn.disabled=true;staffLoginBtn.textContent='読み込み中…';staffLoginError.textContent='';
+  staffLoginBtn.disabled=true;staffLoginBtn.textContent='確認中…';staffLoginError.textContent='';
   try{
+    const r=await api('login',{role:'staff',name:n,password:p}); // 判定はサーバー側で行う
+    authToken=r.token;loggedUser=n;isAdmin=false;
+    localStorage.setItem('lastStaffName',n);
     makePeriods();await preloadPeriods();
     loginOverlay.style.display='none';staffArea.style.display='block';adminView.style.display='none';
     currentUser.textContent='ログイン中：'+n;renderAll();
   }catch(e){
-    console.error('データの読み込みに失敗しました',e);staffLoginError.textContent='データの読み込みに失敗しました。もう一度お試しください。';
+    console.error('ログインに失敗しました',e);
+    authToken='';loggedUser='';
+    staffLoginError.textContent=e.server?e.message:'通信に失敗しました。もう一度お試しください。';
   }finally{staffLoginBtn.disabled=false;staffLoginBtn.textContent='ログイン';}
 });
 bindTap(adminLoginBtn,async()=>{
+  const p=adminPwLogin.value;
   adminPwLogin.blur(); // タップ直後にキーボードを閉じる
-  if(adminPwLogin.value!==cachedAdminPassword){adminLoginError.textContent='パスワードが違います。';return}
-  isAdmin=true;loggedUser='管理者';
-  adminLoginBtn.disabled=true;adminLoginBtn.textContent='読み込み中…';adminLoginError.textContent='';
+  adminLoginBtn.disabled=true;adminLoginBtn.textContent='確認中…';adminLoginError.textContent='';
   try{
+    const r=await api('login',{role:'admin',password:p}); // 判定はサーバー側で行う
+    authToken=r.token;isAdmin=true;loggedUser='管理者';
     makePeriods();await preloadPeriods();
     loginOverlay.style.display='none';staffArea.style.display='none';adminView.style.display='block';
     currentUser.textContent='管理者';renderAll();
   }catch(e){
-    console.error('データの読み込みに失敗しました',e);adminLoginError.textContent='データの読み込みに失敗しました。もう一度お試しください。';
+    console.error('ログインに失敗しました',e);
+    authToken='';isAdmin=false;loggedUser='';
+    adminLoginError.textContent=e.server?e.message:'通信に失敗しました。もう一度お試しください。';
   }finally{adminLoginBtn.disabled=false;adminLoginBtn.textContent='管理者としてログイン';}
 });
 logoutBtn.onclick=()=>location.reload();
@@ -737,7 +712,8 @@ logoutBtn.onclick=()=>location.reload();
 staffManageBtn.onclick=()=>{
   deadlinePanel.style.display='none';
   staffManage.style.display=staffManage.style.display==='none'?'block':'none';
-  manageStaff.value=names().map(n=>`${n}｜${staffAccounts()[n]||''}`).join('\n');
+  manageStaff.value=names().map(n=>`${n}｜`).join('\n');
+  newAdminPw.value='';
 };
 
 function renderDeadlineList(){
@@ -763,23 +739,26 @@ deadlineSave.onclick=async()=>{
     deadlineMsg.textContent='保存しました';setTimeout(()=>deadlineMsg.textContent='',1500);
   }catch(e){
     console.error('締切設定の保存に失敗しました',e);
-    deadlineMsg.textContent='保存に失敗しました。もう一度お試しください。';
+    deadlineMsg.textContent=e.server?e.message:'保存に失敗しました。もう一度お試しください。';
   }
 };
 manageSave.onclick=async()=>{
-  const lines=manageStaff.value.split('\n').map(x=>x.trim()).filter(Boolean),ns=[],acc={};
+  const lines=manageStaff.value.split('\n').map(x=>x.trim()).filter(Boolean),staff=[];
   for(const line of lines){
-    const [n,p]=line.split('｜');
-    if(!n||!p){manageMsg.textContent='形式は「名前｜パスワード」です。';return}
-    ns.push(n.trim());acc[n.trim()]=p.trim();
+    const i=line.indexOf('｜');
+    const n=(i<0?line:line.slice(0,i)).trim(),p=(i<0?'':line.slice(i+1)).trim();
+    if(!n){manageMsg.textContent='形式は「名前｜パスワード」です。';return}
+    staff.push({name:n,password:p});
   }
-  if(!ns.length){manageMsg.textContent='スタッフを1人以上登録してください。';return}
+  if(!staff.length){manageMsg.textContent='スタッフを1人以上登録してください。';return}
   manageMsg.textContent='保存中…';
   try{
-    await saveConfig(ns,acc);
+    const r=await api('setStaff',{staff,adminPassword:newAdminPw.value.trim()});
+    cachedNames=r.names;
+    manageStaff.value=names().map(n=>`${n}｜`).join('\n');newAdminPw.value='';
     manageMsg.textContent='保存しました';renderAdmin();setTimeout(()=>manageMsg.textContent='',1500);
   }catch(e){
-    console.error('スタッフ設定の保存に失敗しました',e);manageMsg.textContent='保存に失敗しました。もう一度お試しください。';
+    console.error('スタッフ設定の保存に失敗しました',e);manageMsg.textContent=e.server?e.message:'保存に失敗しました。もう一度お試しください。';
   }
 };
 
@@ -792,10 +771,12 @@ async function boot(){
     await loadConfig();
   }catch(e){
     console.error('設定の読み込みに失敗しました',e);
+    loadingMsg.className='error';
+    loadingMsg.textContent='サーバーに接続できませんでした。通信環境を確認して、ページを再読み込みしてください。';
+    return;
   }
   loadingMsg.remove();
-  const ns=names();
-  if(!ns.length||!cachedAdminPassword||!Object.keys(staffAccounts()).length){
+  if(!configured){
     firstSetup.style.display='block';loginChoice.style.display='none';
   }else{
     firstSetup.style.display='none';openChoice();
