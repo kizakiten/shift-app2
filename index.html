@@ -363,6 +363,22 @@ async function loadConfig(){
   const v=await api('init');
   cachedNames=v.names||[];configured=!!v.configured;
 }
+// 前回取得したスタッフ名の一覧をスマホに覚えさせ、次回はサーバーの返事を待たずにログイン画面を出す。
+// （パスワードは一切保存しない。保存するのは名前の一覧だけ）
+const CFG_CACHE_KEY='cfgCache';
+function readCfgCache(){
+  try{
+    const c=JSON.parse(localStorage.getItem(CFG_CACHE_KEY)||'null');
+    if(c&&c.configured&&Array.isArray(c.names)&&c.names.length)return c;
+  }catch(e){}
+  return null;
+}
+function writeCfgCache(){
+  try{
+    if(configured&&cachedNames.length)localStorage.setItem(CFG_CACHE_KEY,JSON.stringify({names:cachedNames,configured:true}));
+    else localStorage.removeItem(CFG_CACHE_KEY);
+  }catch(e){}
+}
 async function saveDeadlines(dl){
   await api('setDeadlines',{deadlines:dl});
   cachedDeadlines=dl;
@@ -660,11 +676,15 @@ function openChoice(){
   loginOverlay.style.display='flex';firstSetup.style.display='none';loginChoice.style.display='block';
   staffLoginBox.style.display='none';adminLoginBox.style.display='none';
 }
-function showStaffLogin(){
-  loginChoice.style.display='none';staffLoginBox.style.display='block';adminLoginBox.style.display='none';
+function fillStaffNames(prefer){
   staffNameLogin.innerHTML=names().map(n=>`<option>${n}</option>`).join('');
   const lastName=localStorage.getItem('lastStaffName');
-  if(lastName&&names().includes(lastName))staffNameLogin.value=lastName;
+  if(prefer&&names().includes(prefer))staffNameLogin.value=prefer;
+  else if(lastName&&names().includes(lastName))staffNameLogin.value=lastName;
+}
+function showStaffLogin(){
+  loginChoice.style.display='none';staffLoginBox.style.display='block';adminLoginBox.style.display='none';
+  fillStaffNames(null);
 }
 function showAdminLogin(){loginChoice.style.display='none';staffLoginBox.style.display='none';adminLoginBox.style.display='block'}
 
@@ -785,7 +805,7 @@ manageSave.onclick=async()=>{
   manageMsg.textContent='保存中…';
   try{
     const r=await api('setStaff',{staff,adminPassword:newAdminPw.value.trim()});
-    cachedNames=r.names;
+    cachedNames=r.names;writeCfgCache();
     manageStaff.value=names().map(n=>`${n}｜`).join('\n');newAdminPw.value='';
     manageMsg.textContent='保存しました';renderAdmin();setTimeout(()=>manageMsg.textContent='',1500);
   }catch(e){
@@ -796,6 +816,24 @@ manageSave.onclick=async()=>{
 async function boot(){
   loginOverlay.style.display='flex';firstSetup.style.display='none';loginChoice.style.display='none';
   staffLoginBox.style.display='none';adminLoginBox.style.display='none';
+  makePeriods();
+  // 2回目以降：前回の名前一覧ですぐログイン画面を出し、最新の情報は裏で取得して更新する
+  const cached=readCfgCache();
+  if(cached){
+    cachedNames=cached.names;configured=true;
+    openChoice();
+    loadConfig().then(()=>{
+      writeCfgCache();
+      if(!configured){ // サーバー側が初期化し直された場合
+        loginChoice.style.display='none';staffLoginBox.style.display='none';adminLoginBox.style.display='none';
+        firstSetup.style.display='block';
+        return;
+      }
+      if(staffLoginBox.style.display==='block')fillStaffNames(staffNameLogin.value);
+    }).catch(e=>console.error('設定の更新に失敗しました（前回の情報で表示中）',e));
+    return;
+  }
+  // 初めて開くとき：サーバーの返事を待つ
   const loadingMsg=document.createElement('p');loadingMsg.id='bootLoading';loadingMsg.className='notice';loadingMsg.textContent='読み込み中…';
   document.querySelector('.loginBox').prepend(loadingMsg);
   try{
@@ -808,12 +846,12 @@ async function boot(){
     return;
   }
   loadingMsg.remove();
+  writeCfgCache();
   if(!configured){
     firstSetup.style.display='block';loginChoice.style.display='none';
   }else{
     firstSetup.style.display='none';openChoice();
   }
-  makePeriods();
 }
 boot();
 </script>
