@@ -616,7 +616,9 @@ ocrFileInput.onchange=async()=>{
   }catch(e){
     console.error('読み取りに失敗しました',e);
     ocrMsg.style.cssText='';ocrMsg.textContent='';
-    alert('読み取りに失敗しました。\n原因: '+(e&&e.message?e.message:e)+'\n\nもう一度お試しいただくか、手入力をお願いします。');
+    const em=(e&&e.message?e.message:String(e));
+    const hint=/404|時間切れ/.test(em)?'\n（サーバーが混み合って時間がかかりすぎた可能性があります。少し時間をおいてお試しください）':'';
+    alert('読み取りに失敗しました。\n原因: '+em+hint+'\n\nもう一度お試しいただくか、手入力をお願いします。');
   }finally{
     ocrBtn.disabled=false;
   }
