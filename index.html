@@ -138,6 +138,7 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14p
           <p class="notice" id="ocrHelpToggle" style="margin:6px 0 0;color:#1a4fb4;cursor:pointer;font-size:14px">▸ 使い方の説明を見る</p>
           <div class="notice" id="ocrHelpText" style="margin:6px 0 0;display:none;font-size:14px">
             <p style="margin:0;font-size:12px">定休希望用紙を写真で撮って、その画像から入力欄に自動反映します。反映後は内容を確認して保存してください。</p>
+
           　<div class="help-title">●手順</div>
             <div class="help-step">①事前にスマホで定休希望用紙を写真に撮る</div>
             <div class="help-step">②スマホで休み希望アプリを開く</div>
@@ -308,20 +309,39 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbwB6hFzuiXYeWvN4ah8jKQr
 let authToken='';
 // サーバーとの通信はすべてここを通す。ログイン後は自動でトークンを付ける。
 async function api(action,payload){
-  const res=await fetch(API_URL,{
-    method:'POST',
-    headers:{'Content-Type':'text/plain'}, // プリフライトを避けるためtext/plainで送る
-    body:JSON.stringify(Object.assign({action,token:authToken},payload||{}))
-  });
-  if(!res.ok)throw new Error('通信エラー: '+res.status);
-  const raw=await res.text();
-  let j;
-  try{j=JSON.parse(raw);}catch(_){throw new Error('サーバーの応答が不正です（Apps Scriptのデプロイ更新・権限承認を確認してください）: '+raw.slice(0,80));}
-  if(j.error){
-    if(j.code==='auth'&&authToken){alert(j.error);location.reload();}
-    const err=new Error(j.error);err.server=true;throw err;
+  // 読み取り系・ログインは、通信が一瞬失敗しても1回だけ自動でやり直す
+  const retries=(action==='init'||action==='login'||action==='getMany')?1:0;
+  for(let attempt=0;;attempt++){
+    try{return await apiOnce(action,payload);}
+    catch(e){
+      if(e.server||attempt>=retries)throw e;
+      await new Promise(r=>setTimeout(r,1200));
+    }
   }
-  return j;
+}
+async function apiOnce(action,payload){
+  const ctrl=new AbortController();
+  const timer=action==='ocr'?null:setTimeout(()=>ctrl.abort(),40000); // 40秒で見切る（OCRのみ無制限）
+  try{
+    const res=await fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain'}, // プリフライトを避けるためtext/plainで送る
+      body:JSON.stringify(Object.assign({action,token:authToken},payload||{})),
+      signal:ctrl.signal
+    });
+    if(!res.ok)throw new Error('通信エラー: '+res.status);
+    const raw=await res.text();
+    let j;
+    try{j=JSON.parse(raw);}catch(_){throw new Error('サーバーの応答が不正です（Apps Scriptのデプロイ更新・権限承認を確認してください）: '+raw.slice(0,80));}
+    if(j.error){
+      if(j.code==='auth'&&authToken){alert(j.error);location.reload();}
+      const err=new Error(j.error);err.server=true;throw err;
+    }
+    return j;
+  }catch(e){
+    if(e&&e.name==='AbortError')throw new Error('サーバーの応答がありませんでした（時間切れ）');
+    throw e;
+  }finally{if(timer)clearTimeout(timer);}
 }
 async function apiOcr(base64,dateList){
   const j=await api('ocr',{image:base64,dates:dateList});
@@ -362,14 +382,23 @@ async function loadPeriodData(key){
   return periodDataCache[key];
 }
 // ログイン直後に、対象期間のデータと締切設定をまとめて取得する
-async function preloadPeriods(){
-  const opts=[...period.options].map(o=>o.value);
-  const v=(await api('getMany',{keys:[...opts.map(k=>'period:'+k),'config:deadlines']})).values;
+function preloadKeys(){
+  return [...[...period.options].map(o=>'period:'+o.value),'config:deadlines'];
+}
+function applyPreload(v){
   cachedDeadlines=v['config:deadlines']?JSON.parse(v['config:deadlines']):{};
-  opts.forEach(k=>{
+  [...period.options].map(o=>o.value).forEach(k=>{
     const raw=v['period:'+k];
     periodDataCache[k]=raw?JSON.parse(raw):{};
   });
+}
+async function preloadPeriods(){
+  applyPreload((await api('getMany',{keys:preloadKeys()})).values);
+}
+// ログイン中の待ち時間表示
+function showWait(el,on){
+  el.style.color=on?'#666':'';
+  el.textContent=on?'サーバーに接続しています。時間がかかる場合があります（最大30秒ほど）':'';
 }
 
 
@@ -673,34 +702,40 @@ backChoice1.onclick=openChoice;backChoice2.onclick=openChoice;
 bindTap(staffLoginBtn,async()=>{
   const n=staffNameLogin.value,p=staffPwLogin.value;
   staffPwLogin.blur(); // タップ直後にキーボードを閉じる
-  staffLoginBtn.disabled=true;staffLoginBtn.textContent='読み込み中…';staffLoginError.textContent='';
+  staffLoginBtn.disabled=true;staffLoginBtn.textContent='読み込み中…';showWait(staffLoginError,true);
   try{
-    const r=await api('login',{role:'staff',name:n,password:p}); // 判定はサーバー側で行う
+    makePeriods();
+    const r=await api('login',{role:'staff',name:n,password:p,keys:preloadKeys()}); // 判定はサーバー側で行う
     authToken=r.token;loggedUser=n;isAdmin=false;
     localStorage.setItem('lastStaffName',n);
-    makePeriods();await preloadPeriods();
+    if(r.values)applyPreload(r.values);else await preloadPeriods();
+    showWait(staffLoginError,false);
     loginOverlay.style.display='none';staffArea.style.display='block';adminView.style.display='none';
     currentUser.textContent='ログイン中：'+n;renderAll();
   }catch(e){
     console.error('ログインに失敗しました',e);
     authToken='';loggedUser='';
-    staffLoginError.textContent=e.server?e.message:'通信に失敗しました。もう一度お試しください。';
+    showWait(staffLoginError,false);
+    staffLoginError.textContent=e.server?e.message:'通信に失敗しました。もう一度お試しください。（'+(e&&e.message?e.message:e)+'）';
   }finally{staffLoginBtn.disabled=false;staffLoginBtn.textContent='ログイン';}
 });
 bindTap(adminLoginBtn,async()=>{
   const p=adminPwLogin.value;
   adminPwLogin.blur(); // タップ直後にキーボードを閉じる
-  adminLoginBtn.disabled=true;adminLoginBtn.textContent='確認中…';adminLoginError.textContent='';
+  adminLoginBtn.disabled=true;adminLoginBtn.textContent='確認中…';showWait(adminLoginError,true);
   try{
-    const r=await api('login',{role:'admin',password:p}); // 判定はサーバー側で行う
+    makePeriods();
+    const r=await api('login',{role:'admin',password:p,keys:preloadKeys()}); // 判定はサーバー側で行う
     authToken=r.token;isAdmin=true;loggedUser='管理者';
-    makePeriods();await preloadPeriods();
+    if(r.values)applyPreload(r.values);else await preloadPeriods();
+    showWait(adminLoginError,false);
     loginOverlay.style.display='none';staffArea.style.display='none';adminView.style.display='block';
     currentUser.textContent='管理者';renderAll();
   }catch(e){
     console.error('ログインに失敗しました',e);
     authToken='';isAdmin=false;loggedUser='';
-    adminLoginError.textContent=e.server?e.message:'通信に失敗しました。もう一度お試しください。';
+    showWait(adminLoginError,false);
+    adminLoginError.textContent=e.server?e.message:'通信に失敗しました。もう一度お試しください。（'+(e&&e.message?e.message:e)+'）';
   }finally{adminLoginBtn.disabled=false;adminLoginBtn.textContent='管理者としてログイン';}
 });
 logoutBtn.onclick=()=>location.reload();
