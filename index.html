@@ -308,20 +308,26 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbwB6hFzuiXYeWvN4ah8jKQr
 
 let authToken='';
 // サーバーとの通信はすべてここを通す。ログイン後は自動でトークンを付ける。
+// Googleの窓口は、サーバーの処理が1秒前後で終わっていても、返事を返すまでに数十秒止まることがある（Google側の転送の遅れ）。
+// 読み取り系・ログインは、長く待たずに20秒で見切って、最大3回まで自動でやり直す方が、結果的に早くつながる。
+// （書き込み系は、古いデータが後から上書きされる心配があるので、やり直さず40秒待つ）
+window.onApiRetry=null;
 async function api(action,payload){
-  // 読み取り系・ログインは、通信が一瞬失敗しても1回だけ自動でやり直す
-  const retries=(action==='init'||action==='login'||action==='getMany')?1:0;
+  const retryable=(action==='init'||action==='login'||action==='getMany');
+  const retries=retryable?2:0;
+  const timeoutMs=retryable?20000:40000;
   for(let attempt=0;;attempt++){
-    try{return await apiOnce(action,payload);}
+    try{return await apiOnce(action,payload,timeoutMs);}
     catch(e){
       if(e.server||attempt>=retries)throw e;
-      await new Promise(r=>setTimeout(r,1200));
+      if(window.onApiRetry)window.onApiRetry(attempt+2);
+      await new Promise(r=>setTimeout(r,800));
     }
   }
 }
-async function apiOnce(action,payload){
+async function apiOnce(action,payload,timeoutMs){
   const ctrl=new AbortController();
-  const timer=action==='ocr'?null:setTimeout(()=>ctrl.abort(),40000); // 40秒で見切る（OCRのみ無制限）
+  const timer=action==='ocr'?null:setTimeout(()=>ctrl.abort(),timeoutMs||40000); // 指定時間で見切る（OCRのみ無制限）
   try{
     const res=await fetch(API_URL,{
       method:'POST',
@@ -356,7 +362,7 @@ async function pollOcrResult(jobId){
   while(Date.now()<until){
     await new Promise(r=>setTimeout(r,4000));
     try{
-      const j=await apiOnce('ocrResult',{jobId});
+      const j=await apiOnce('ocrResult',{jobId},20000);
       if(j.status==='done')return j.result;
       if(j.status==='error'){const err=new Error(j.message||'読み取りに失敗しました');err.server=true;throw err;}
       // status==='pending'：まだ処理中なので、もう一度待つ
@@ -444,7 +450,7 @@ async function preloadPeriods(){
 // ログイン中の待ち時間表示
 function showWait(el,on){
   el.style.color=on?'#666':'';
-  el.textContent=on?'サーバーに接続しています。時間がかかる場合があります（最大30秒ほど）':'';
+  el.textContent=on?'サーバーに接続しています。時間がかかる場合があります（最大1分ほど）':'';
 }
 
 
@@ -755,6 +761,7 @@ bindTap(staffLoginBtn,async()=>{
   const n=staffNameLogin.value,p=staffPwLogin.value;
   staffPwLogin.blur(); // タップ直後にキーボードを閉じる
   staffLoginBtn.disabled=true;staffLoginBtn.textContent='読み込み中…';showWait(staffLoginError,true);
+  window.onApiRetry=k=>{staffLoginError.style.color='#666';staffLoginError.textContent='接続に時間がかかっています。自動でやり直しています（'+k+'回目）…';};
   try{
     makePeriods();
     const r=await api('login',{role:'staff',name:n,password:p,keys:preloadKeys()}); // 判定はサーバー側で行う
@@ -769,12 +776,13 @@ bindTap(staffLoginBtn,async()=>{
     authToken='';loggedUser='';
     showWait(staffLoginError,false);
     staffLoginError.textContent=e.server?e.message:'通信に失敗しました。もう一度お試しください。（'+(e&&e.message?e.message:e)+'）';
-  }finally{staffLoginBtn.disabled=false;staffLoginBtn.textContent='ログイン';}
+  }finally{window.onApiRetry=null;staffLoginBtn.disabled=false;staffLoginBtn.textContent='ログイン';}
 });
 bindTap(adminLoginBtn,async()=>{
   const p=adminPwLogin.value;
   adminPwLogin.blur(); // タップ直後にキーボードを閉じる
   adminLoginBtn.disabled=true;adminLoginBtn.textContent='確認中…';showWait(adminLoginError,true);
+  window.onApiRetry=k=>{adminLoginError.style.color='#666';adminLoginError.textContent='接続に時間がかかっています。自動でやり直しています（'+k+'回目）…';};
   try{
     makePeriods();
     const r=await api('login',{role:'admin',password:p,keys:preloadKeys()}); // 判定はサーバー側で行う
@@ -788,7 +796,7 @@ bindTap(adminLoginBtn,async()=>{
     authToken='';isAdmin=false;loggedUser='';
     showWait(adminLoginError,false);
     adminLoginError.textContent=e.server?e.message:'通信に失敗しました。もう一度お試しください。（'+(e&&e.message?e.message:e)+'）';
-  }finally{adminLoginBtn.disabled=false;adminLoginBtn.textContent='管理者としてログイン';}
+  }finally{window.onApiRetry=null;adminLoginBtn.disabled=false;adminLoginBtn.textContent='管理者としてログイン';}
 });
 logoutBtn.onclick=()=>location.reload();
 
