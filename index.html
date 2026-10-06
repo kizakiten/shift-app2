@@ -343,9 +343,39 @@ async function apiOnce(action,payload){
     throw e;
   }finally{if(timer)clearTimeout(timer);}
 }
+// 用紙の読み取り。
+// サーバーの処理に時間がかかると、処理は成功していても返事がこちらに届かず「通信エラー404」になることがある。
+// そのため、読み取りごとに受付番号（jobId）をつけて送り、返事が届かなかったときは
+// サーバーに一時保存された結果を数秒おきに取りに行く。
+function newJobId(){
+  const s=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));
+  return s.replace(/[^A-Za-z0-9_-]/g,'');
+}
+async function pollOcrResult(jobId){
+  const until=Date.now()+120000; // 最長2分待つ
+  while(Date.now()<until){
+    await new Promise(r=>setTimeout(r,4000));
+    try{
+      const j=await apiOnce('ocrResult',{jobId});
+      if(j.status==='done')return j.result;
+      if(j.status==='error'){const err=new Error(j.message||'読み取りに失敗しました');err.server=true;throw err;}
+      // status==='pending'：まだ処理中なので、もう一度待つ
+    }catch(e){
+      if(e&&e.server)throw e; // サーバーが返した明確なエラーはそのまま伝える
+      // 通信エラーは一時的なものとして、そのまま待ち続ける
+    }
+  }
+  throw new Error('読み取りの結果を受け取れませんでした（時間切れ）');
+}
 async function apiOcr(base64,dateList){
-  const j=await api('ocr',{image:base64,dates:dateList});
-  return j.result; // {statuses:{iso:'abs'|'pref'|'none'}, times:{iso:{from,to}}, note:string}
+  const jobId=newJobId();
+  try{
+    const j=await api('ocr',{image:base64,dates:dateList,jobId});
+    return j.result; // {statuses:{iso:'abs'|'pref'|'none'}, times:{iso:{from,to}}, note:string}
+  }catch(e){
+    if(e&&e.server)throw e; // サーバーが「失敗した」と返したときは、そのままエラーにする
+    return await pollOcrResult(jobId); // 返事が届かなかっただけなら、結果を取りに行く
+  }
 }
 
 function names(){return cachedNames}
